@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 18
 
-        - name: Ensure Expo project exists
+      - name: Ensure Expo project exists
         run: |
           if [ ! -f "package.json" ]; then
             echo "⚠️ No package.json found, creating a new Expo app..."
@@ -30,9 +30,9 @@ jobs:
 
       - name: Login to Expo
         run: |
-          npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
+          npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_TOKEN }}
 
-      - - name: Start Expo server (QR Code)
+      - name: Start Expo server (QR Code)
         run: |
           npx expo start --non-interactive --tunnel --json > expo_output.json &
           sleep 20
