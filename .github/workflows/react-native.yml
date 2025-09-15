@@ -32,7 +32,7 @@ jobs:
         run: |
           npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
 
-      - name: Start Expo server (QR Code)
+      - - name: Start Expo server (QR Code)
         run: |
           npx expo start --non-interactive --tunnel --json > expo_output.json &
           sleep 20
