@@ -1,0 +1,39 @@
+name: Build React Native Expo App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+        - name: Ensure Expo project exists
+        run: |
+          if [ ! -f "package.json" ]; then
+            echo "⚠️ No package.json found, creating a new Expo app..."
+            npx create-expo-app@latest . --yes
+          else
+            echo "✅ Found package.json, using existing project."
+          fi
+
+      - name: Install dependencies
+        run: npm install -g expo-cli && npm install
+
+      - name: Login to Expo
+        run: |
+          npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
+
+      - name: Start Expo server (QR Code)
+        run: |
+          npx expo start --non-interactive --tunnel --json > expo_output.json &
+          sleep 20
+          cat expo_output.json
