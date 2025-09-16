@@ -33,6 +33,6 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           CI=1 npx expo start --tunnel > expo_output.txt 2>&1 &
-          sleep 25
-          cat expo_output.json
-
+          sleep 20
+          cat expo_output.txt
+      
