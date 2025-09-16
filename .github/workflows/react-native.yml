@@ -28,11 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm install -g expo-cli && npm install
 
-      - name: Publish or Start Expo project (using token)
+      - name: Start Expo project
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          expo publish --non-interactive --tunnel --json > expo_output.json
 
 
       - name: Start Expo server (QR Code)
