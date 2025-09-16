@@ -1,1 +1,1 @@
-// New file: main.js
+// New file: main.tsx
