@@ -28,13 +28,11 @@ jobs:
       - name: Install dependencies
         run: npm install -g expo-cli && npm install
 
-      - name: Start Expo project
+      - name: Start Expo server (QR Code)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-
-      - name: Start Expo server (QR Code)
         run: |
           npx expo start --non-interactive --tunnel --json > expo_output.json &
-          sleep 20
+          sleep 25
           cat expo_output.json
+
