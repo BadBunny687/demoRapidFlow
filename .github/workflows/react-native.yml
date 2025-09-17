@@ -34,5 +34,11 @@ jobs:
         run: |
           CI=1 npx expo start --tunnel > expo_output.txt 2>&1 &
           sleep 20
-          cat expo_output.txt
+          grep -o "exp://[^s]*" expo_output.txt || echo "No Expo URL found yet"
+
+      - name: Upload Expo URL
+          uses: actions/upload-artifact@v3
+          with:
+            name: expo-output
+            path: expo_output.json
       
