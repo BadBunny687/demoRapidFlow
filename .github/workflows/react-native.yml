@@ -37,7 +37,7 @@ jobs:
           grep -o "exp://[^\s]*" expo_output.txt | head -n 1 > expo_output.json || echo '{"url":null}' > expo_output.json
 
       - name: Upload Expo URL
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: expo-output
           path: expo_output.json
