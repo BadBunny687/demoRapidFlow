@@ -28,23 +28,16 @@ jobs:
       - name: Install dependencies
         run: npm install -g expo-cli && npm install
 
-      - name: Start Expo server (QR Code)
+      - name: Publish Expo app
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           set -o pipefail
           npx expo whoami || true
-          # Start expo in background and capture full output
-          npm install -g @expo/ngrok@^4.1.0 
-          CI=1 npx expo start --tunnel --json > expo_output.txt 2>&1 &
-          # wait up to 2 minutes for the URL to appear (poll every 5s)
-          for i in {1..24}; do
-            if grep -Eo 'exp://[^[:space:]]+' expo_output.txt || grep -Eo 'https?://[^[:space:]]*expo.dev[^[:space:]]*' expo_output.txt; then
-              break
-            fi
-            sleep 5
-          done
+          # Publish app to Expo servers (non-interactive, CI-friendly)
+          npx expo publish --non-interactive --json > expo_output.json 2>&1
           echo "---- EXPO OUTPUT (tail) ----"
+
           tail -n 200 expo_output.txt || true
           # Try multiple patterns to find a usable URL
           # Try multiple patterns to find a usable URL
