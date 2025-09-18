@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm install -g expo-cli && npm install
 
-            - name: Publish Expo app
+      - name: Publish Expo app
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
