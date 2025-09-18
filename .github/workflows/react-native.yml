@@ -32,12 +32,36 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          CI=1 npx expo start --tunnel > expo_output.txt 2>&1 &
-          sleep 60
-          grep -o "exp://[^\s]*" expo_output.txt | head -n 1 > expo_output.json || echo '{"url":null}' > expo_output.json
+          set -o pipefail
+          npx expo whoami || true
+          # Start expo in background and capture full output
+          npx expo start --tunnel --non-interactive > expo_output.txt 2>&1 &
+          # wait up to 2 minutes for the URL to appear (poll every 5s)
+          for i in {1..24}; do
+            if grep -Eo 'exp://[^[:space:]]+' expo_output.txt || grep -Eo 'https?://[^[:space:]]*expo.dev[^[:space:]]*' expo_output.txt; then
+              break
+            fi
+            sleep 5
+          done
+          echo "---- EXPO OUTPUT (tail) ----"
+          tail -n 200 expo_output.txt || true
+          # Try multiple patterns to find a usable URL
+          URL=$(grep -Eo 'exp://[^[:space:]]+' expo_output.txt | head -n1 || true)
+          if [ -z "$URL" ]; then
+            URL=$(grep -Eo 'https?://[^[:space:]]*expo.dev[^[:space:]]*' expo_output.txt | head -n1 || true)
+          fi
+          if [ -z "$URL" ]; then
+            echo '{"url":null}' > expo_output.json
+            echo "No expo URL found"
+          else
+            printf '{"url":"%s"}' "$URL" > expo_output.json
+            echo "FOUND_EXPO_URL=$URL"
+          fi
 
-      - name: Upload Expo URL
+      - name: Upload Expo output artifacts
         uses: actions/upload-artifact@v4
         with:
           name: expo-output
-          path: expo_output.json
+          path: |
+            expo_output.json
+            expo_output.txt
