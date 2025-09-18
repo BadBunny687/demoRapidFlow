@@ -25,42 +25,42 @@ jobs:
             echo "✅ Found package.json, using existing project."
           fi
 
-      - name: Install dependencies
+      - name: Install dependencies including ngrok
         run: npm install -g expo-cli @expo/ngrok && npm install
 
       - name: Start Expo app with tunnel
-  env:
-    EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-    CI: 1
-  run: |
-    set -o pipefail
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: 1
+        run: |
+          set -o pipefail
 
-    # Preinstall ngrok so Expo can use tunnels without prompting
-    npm install -g @expo/ngrok
+          # Preinstall ngrok so Expo can use tunnels
+          # Already installed above, but ensure it's in PATH
+          which ngrok || npm install -g @expo/ngrok
 
-    # Start the tunnel dev server
-    npx expo start --tunnel > expo_output.txt 2>&1 &
+          # Start the tunnel in the background
+          npx expo start --tunnel > expo_output.txt 2>&1 &
 
-    # Give it time to boot and produce the URL
-    sleep 60
+          # Wait for server to start
+          sleep 60
 
-    echo "---- EXPO OUTPUT (tail) ----"
-    tail -n 200 expo_output.txt || true
+          echo "---- EXPO OUTPUT (tail) ----"
+          tail -n 200 expo_output.txt || true
 
-    # Extract a URL
-    URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
-    if [ -z "$URL" ]; then
-      URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
-    fi
+          # Try extract exp:// or expo.dev URL
+          URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
+          if [ -z "$URL" ]; then
+            URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
+          fi
 
-    if [ -z "$URL" ]; then
-      echo '{"url":null}' > expo_output.json
-      echo "No expo URL found"
-    else
-      printf '{"url":"%s"}' "$URL" > expo_output.json
-      echo "FOUND_EXPO_URL=$URL"
-    fi
-
+          if [ -z "$URL" ]; then
+            echo '{"url":null}' > expo_output.json
+            echo "No expo URL found"
+          else
+            printf '{"url":"%s"}' "$URL" > expo_output.json
+            echo "FOUND_EXPO_URL=$URL"
+          fi
 
       - name: Upload Expo output artifacts
         uses: actions/upload-artifact@v4
