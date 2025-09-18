@@ -31,15 +31,18 @@ jobs:
       - name: Publish Expo app
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: true
         run: |
           set -o pipefail
           npx expo whoami || true
-          # Publish app to Expo servers (CI-friendly)
-          npx expo publish --non-interactive > expo_output.txt 2>&1 || true
+
+          # Use EAS Update instead of expo publish
+          npx eas-cli@latest update --non-interactive --branch main --message "CI build" > expo_output.txt 2>&1 || true
+
           echo "---- EXPO OUTPUT (tail) ----"
           tail -n 200 expo_output.txt || true
 
-          # Extract Expo URL from logs
+          # Extract URL from EAS logs
           URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
           if [ -z "$URL" ]; then
             URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
