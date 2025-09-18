@@ -25,15 +25,19 @@ jobs:
             echo "✅ Found package.json, using existing project."
           fi
 
-      - name: Update Expo packages
+      - name: Install dependencies and fix packages
         run: |
-          # Update packages to recommended versions
-          npx expo install --fix
-          
-      - name: Install dependencies including ngrok
-        run: |
+          # Install global dependencies
           npm install -g expo-cli @expo/ngrok
+          
+          # Install project dependencies
           npm install
+          
+          # Fix any version mismatches (only if package.json exists with expo)
+          if [ -f "package.json" ] && grep -q '"expo"' package.json; then
+            echo "Fixing Expo package versions..."
+            npx expo install --fix || npx expo doctor --fix-dependencies || true
+          fi
 
       - name: Start Expo app with tunnel
         env:
