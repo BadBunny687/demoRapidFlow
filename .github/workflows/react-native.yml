@@ -29,35 +29,38 @@ jobs:
         run: npm install -g expo-cli @expo/ngrok && npm install
 
       - name: Start Expo app with tunnel
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          CI: 1
-        run: |
-          set -o pipefail
-          npx expo login --token $EXPO_TOKEN || true
+  env:
+    EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    CI: 1
+  run: |
+    set -o pipefail
 
-          # Start tunnel in background
-          npx expo start --tunnel --no-interactive > expo_output.txt 2>&1 &
+    # Preinstall ngrok so Expo can use tunnels without prompting
+    npm install -g @expo/ngrok
 
-          # Allow Metro bundler to boot
-          sleep 60
+    # Start the tunnel dev server
+    npx expo start --tunnel > expo_output.txt 2>&1 &
 
-          echo "---- EXPO OUTPUT (tail) ----"
-          tail -n 200 expo_output.txt || true
+    # Give it time to boot and produce the URL
+    sleep 60
 
-          # Extract exp:// or expo.dev URL
-          URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
-          if [ -z "$URL" ]; then
-            URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
-          fi
+    echo "---- EXPO OUTPUT (tail) ----"
+    tail -n 200 expo_output.txt || true
 
-          if [ -z "$URL" ]; then
-            echo '{"url":null}' > expo_output.json
-            echo "No expo URL found"
-          else
-            printf '{"url":"%s"}' "$URL" > expo_output.json
-            echo "FOUND_EXPO_URL=$URL"
-          fi
+    # Extract a URL
+    URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
+    if [ -z "$URL" ]; then
+      URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
+    fi
+
+    if [ -z "$URL" ]; then
+      echo '{"url":null}' > expo_output.json
+      echo "No expo URL found"
+    else
+      printf '{"url":"%s"}' "$URL" > expo_output.json
+      echo "FOUND_EXPO_URL=$URL"
+    fi
+
 
       - name: Upload Expo output artifacts
         uses: actions/upload-artifact@v4
