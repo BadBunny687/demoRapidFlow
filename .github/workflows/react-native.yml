@@ -25,12 +25,12 @@ jobs:
             echo "✅ Found package.json, using existing project."
           fi
 
-      - name: Install dependencies
+      - name: Install dependencies including ngrok
         run: |
-          npm install -g expo-cli
+          npm install -g expo-cli @expo/ngrok
           npm install
 
-      - name: Start Expo app with tunnel and fetch URL
+      - name: Start Expo app with tunnel and extract URL
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           CI: 1
@@ -38,20 +38,20 @@ jobs:
           set -o pipefail
           echo "▶ Starting Expo in tunnel mode..."
 
-          # Ensure ngrok is installed
-          npm install -g @expo/ngrok
+          # Start expo in background with tunnel
+          npx expo start --tunnel > expo_output.txt 2>&1 &
 
-          # Start Expo server in background
-          npx expo start --tunnel --no-manifest > expo_output.txt 2>&1 &
-
-          # Wait for Metro + tunnel to come online
-          sleep 45
+          # Wait for metro + tunnel to come up
+          sleep 60
 
           echo "---- EXPO OUTPUT (tail) ----"
           tail -n 100 expo_output.txt || true
 
-          # Explicitly fetch tunnel URL
-          URL=$(npx expo url --non-interactive || true)
+          # Try to extract URL from logs
+          URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
+          if [ -z "$URL" ]; then
+            URL=$(grep -Eo 'https://[^[:space:]]*\.expo\.dev[^[:space:]]*' expo_output.txt | head -n1 || true)
+          fi
 
           if [ -z "$URL" ]; then
             echo '{"url":null}' > expo_output.json
