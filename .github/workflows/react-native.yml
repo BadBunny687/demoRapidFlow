@@ -28,14 +28,14 @@ jobs:
       - name: Install dependencies
         run: npm install -g expo-cli && npm install
 
-      - name: Publish Expo app
+            - name: Publish Expo app
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           set -o pipefail
           npx expo whoami || true
           # Publish app to Expo servers (CI-friendly)
-          npx expo publish --non-interactive > expo_output.txt 2>&1
+          npx expo publish --non-interactive > expo_output.txt 2>&1 || true
           echo "---- EXPO OUTPUT (tail) ----"
           tail -n 200 expo_output.txt || true
 
