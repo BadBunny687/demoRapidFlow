@@ -25,6 +25,14 @@ jobs:
             echo "✅ Found package.json, using existing project."
           fi
 
+      - name: Configure EAS project
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: true
+        run: |
+          npx eas-cli@latest project:info || npx eas-cli@latest init --non-interactive --id $(uuidgen)
+
+      
       - name: Install dependencies
         run: npm install -g expo-cli && npm install
 
