@@ -1,4 +1,5 @@
 name: Build React Native Expo App
+name: Build React Native Expo App
 
 on:
   workflow_dispatch:
@@ -25,81 +26,45 @@ jobs:
             echo "✅ Found package.json, using existing project."
           fi
 
-      - name: Install dependencies and fix packages
+      - name: Update Expo packages
         run: |
-          # Install global dependencies
+          # Update packages to recommended versions
+          npx expo install --fix
+          
+      - name: Install dependencies including ngrok
+        run: |
           npm install -g expo-cli @expo/ngrok
-          
-          # Install project dependencies
           npm install
-          
-          # Fix any version mismatches (only if package.json exists with expo)
-          if [ -f "package.json" ] && grep -q '"expo"' package.json; then
-            echo "Fixing Expo package versions..."
-            npx expo install --fix || npx expo doctor --fix-dependencies || true
-          fi
 
       - name: Start Expo app with tunnel
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          CI: 1
-        run: |
-          set -o pipefail
+  env:
+    EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    CI: 1
+  run: |
+    set -o pipefail
 
-          # Ensure ngrok is available
-          which ngrok || npm install -g @expo/ngrok
+    # Ensure ngrok is there
+    npm install -g @expo/ngrok
 
-          # Start the tunnel in the background and capture output
-          npx expo start --tunnel --non-interactive > expo_output.txt 2>&1 &
-          EXPO_PID=$!
+    # Start expo in background
+    npx expo start --tunnel --no-manifest > expo_output.txt 2>&1 &
 
-          # Monitor the output file for the tunnel URL
-          echo "Waiting for Expo tunnel to be ready..."
-          COUNTER=0
-          MAX_ATTEMPTS=30
-          
-          while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-            sleep 5
-            COUNTER=$((COUNTER+1))
-            
-            # Check if process is still running
-            if ! ps -p $EXPO_PID > /dev/null; then
-              echo "Expo process stopped unexpectedly"
-              cat expo_output.txt
-              exit 1
-            fi
-            
-            # Look for tunnel URL patterns
-            if grep -q "Tunnel ready" expo_output.txt; then
-              echo "✅ Tunnel is ready!"
-              break
-            fi
-            
-            echo "Attempt $COUNTER/$MAX_ATTEMPTS - Waiting for tunnel..."
-          done
+    # Give metro a bit of time
+    sleep 45
 
-          # Give it a bit more time to fully output the URL
-          sleep 10
+    echo "---- EXPO OUTPUT (tail) ----"
+    tail -n 100 expo_output.txt || true
 
-          echo "---- EXPO OUTPUT (full) ----"
-          cat expo_output.txt || true
-          echo "---- END EXPO OUTPUT ----"
+    # Now explicitly fetch the tunnel URL
+    URL=$(npx expo url --non-interactive || true)
 
-          # Extract URLs with multiple patterns
-          URL=""
-          
-          # Try to find exp:// URL (most common for tunnels)
-          URL=$(grep -Eo 'exp://[a-zA-Z0-9.-]+:[0-9]+' expo_output.txt | head -n1 || true)
-          
-          # If no exp:// URL, try expo.dev URL
-          if [ -z "$URL" ]; then
-            URL=$(grep -Eo 'https://[a-zA-Z0-9.-]*expo.dev[^[:space:]]*' expo_output.txt | head -n1 || true)
-          fi
-          
-          # Try to find the tunnel URL specifically
-          if [ -z "$URL" ]; then
-            URL=$(grep -i "tunnel.*exp://" expo_output.txt | grep -Eo 'exp://[^[:space:]]+' | head -n1 || true)
-          fi
+    if [ -z "$URL" ]; then
+      echo '{"url":null}' > expo_output.json
+      echo "No expo URL found"
+    else
+      printf '{"url":"%s"}' "$URL" > expo_output.json
+      echo "FOUND_EXPO_URL=$URL"
+    fi
           
           # Look for QR code URL
           if [ -z "$URL" ]; then
