@@ -33,7 +33,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           CI=1 npx expo start --tunnel > expo_output.txt 2>&1 &
-          sleep 20
+          sleep 60
           grep -o "exp://[^\s]*" expo_output.txt | head -n 1 > expo_output.json || echo '{"url":null}' > expo_output.json
 
       - name: Upload Expo URL
