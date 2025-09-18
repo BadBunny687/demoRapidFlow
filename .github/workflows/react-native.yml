@@ -25,44 +25,42 @@ jobs:
             echo "✅ Found package.json, using existing project."
           fi
 
-      - name: Configure EAS project
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          CI: true
-        run: |
-          npx eas-cli@latest project:info || npx eas-cli@latest init --non-interactive --id $(uuidgen)
-
-      
       - name: Install dependencies
         run: npm install -g expo-cli && npm install
 
-      - name: Publish Expo app
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          CI: true
-        run: |
-          set -o pipefail
-          npx expo whoami || true
+- name: Publish Expo app (dev tunnel)
+  env:
+    EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    CI: 1
+  run: |
+    set -o pipefail
+    npx expo login --token $EXPO_TOKEN || true
 
-          # Use EAS Update instead of expo publish
-          npx eas-cli@latest update --non-interactive --branch main --message "CI build" > expo_output.txt 2>&1 || true
+    # Preinstall ngrok to avoid prompt
+    npm install -g @expo/ngrok
 
-          echo "---- EXPO OUTPUT (tail) ----"
-          tail -n 200 expo_output.txt || true
+    # Start tunnel in background
+    npx expo start --tunnel --no-interactive > expo_output.txt 2>&1 &
 
-          # Extract URL from EAS logs
-          URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
-          if [ -z "$URL" ]; then
-            URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
-          fi
+    # Allow Metro bundler to boot up
+    sleep 60
 
-          if [ -z "$URL" ]; then
-            echo '{"url":null}' > expo_output.json
-            echo "No expo URL found"
-          else
-            printf '{"url":"%s"}' "$URL" > expo_output.json
-            echo "FOUND_EXPO_URL=$URL"
-          fi
+    echo "---- EXPO OUTPUT (tail) ----"
+    tail -n 200 expo_output.txt || true
+
+    # Extract exp:// or https://expo.dev URL
+    URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
+    if [ -z "$URL" ]; then
+      URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
+    fi
+
+    if [ -z "$URL" ]; then
+      echo '{"url":null}' > expo_output.json
+      echo "No expo URL found"
+    else
+      printf '{"url":"%s"}' "$URL" > expo_output.json
+      echo "FOUND_EXPO_URL=$URL"
+    fi
 
       - name: Upload Expo output artifacts
         uses: actions/upload-artifact@v4
