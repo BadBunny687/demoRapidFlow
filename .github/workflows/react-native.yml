@@ -34,20 +34,17 @@ jobs:
         run: |
           set -o pipefail
           npx expo whoami || true
-          # Publish app to Expo servers (non-interactive, CI-friendly)
-          npx expo publish --non-interactive --json > expo_output.json 2>&1
+          # Publish app to Expo servers (CI-friendly)
+          npx expo publish --non-interactive > expo_output.txt 2>&1
           echo "---- EXPO OUTPUT (tail) ----"
-
           tail -n 200 expo_output.txt || true
-          # Try multiple patterns to find a usable URL
-          # Try multiple patterns to find a usable URL
-          URL=$(grep -Eo '"url":"[^"]+"' expo_output.txt | head -n1 | cut -d'"' -f4 || true)
+
+          # Extract Expo URL from logs
+          URL=$(grep -Eo 'https://expo.dev/[^[:space:]]*' expo_output.txt | head -n1 || true)
           if [ -z "$URL" ]; then
-            URL=$(grep -Eo 'exp://[^[:space:]]+' expo_output.txt | head -n1 || true)
+            URL=$(grep -Eo 'exp://[^[:space:]]*' expo_output.txt | head -n1 || true)
           fi
-          if [ -z "$URL" ]; then
-            URL=$(grep -Eo 'https?://[^[:space:]]*expo.dev[^[:space:]]*' expo_output.txt | head -n1 || true)
-          fi
+
           if [ -z "$URL" ]; then
             echo '{"url":null}' > expo_output.json
             echo "No expo URL found"
