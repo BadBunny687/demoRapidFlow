@@ -1,5 +1,4 @@
 name: Build React Native Expo App
-name: Build React Native Expo App
 
 on:
   workflow_dispatch:
@@ -26,77 +25,40 @@ jobs:
             echo "✅ Found package.json, using existing project."
           fi
 
-      - name: Update Expo packages
+      - name: Install dependencies
         run: |
-          # Update packages to recommended versions
-          npx expo install --fix
-          
-      - name: Install dependencies including ngrok
-        run: |
-          npm install -g expo-cli @expo/ngrok
+          npm install -g expo-cli
           npm install
 
-      - name: Start Expo app with tunnel
-  env:
-    EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-    CI: 1
-  run: |
-    set -o pipefail
-
-    # Ensure ngrok is there
-    npm install -g @expo/ngrok
-
-    # Start expo in background
-    npx expo start --tunnel --no-manifest > expo_output.txt 2>&1 &
-
-    # Give metro a bit of time
-    sleep 45
-
-    echo "---- EXPO OUTPUT (tail) ----"
-    tail -n 100 expo_output.txt || true
-
-    # Now explicitly fetch the tunnel URL
-    URL=$(npx expo url --non-interactive || true)
-
-    if [ -z "$URL" ]; then
-      echo '{"url":null}' > expo_output.json
-      echo "No expo URL found"
-    else
-      printf '{"url":"%s"}' "$URL" > expo_output.json
-      echo "FOUND_EXPO_URL=$URL"
-    fi
-          
-          # Look for QR code URL
-          if [ -z "$URL" ]; then
-            URL=$(grep -A2 -B2 "QR code" expo_output.txt | grep -Eo 'exp://[^[:space:]]+' | head -n1 || true)
-          fi
-
-          # Create JSON output
-          if [ -z "$URL" ]; then
-            echo '{"url":null,"status":"no_url_found"}' > expo_output.json
-            echo "⚠️ No Expo URL found in output"
-            
-            # Try to get more diagnostic info
-            echo "---- Checking for common issues ----"
-            grep -i "error|warn|fail" expo_output.txt || true
-          else
-            printf '{"url":"%s","status":"success"}' "$URL" > expo_output.json
-            echo "✅ Found Expo URL: $URL"
-            echo "EXPO_URL=$URL" >> $GITHUB_ENV
-          fi
-
-          # Kill the Expo process gracefully
-          kill $EXPO_PID 2>/dev/null || true
-
-      - name: Display results
+      - name: Start Expo app with tunnel and fetch URL
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: 1
         run: |
-          echo "=== Expo Output JSON ==="
-          cat expo_output.json
-          echo ""
-          if [ ! -z "$EXPO_URL" ]; then
-            echo "🎉 Success! Your Expo app is accessible at: $EXPO_URL"
+          set -o pipefail
+          echo "▶ Starting Expo in tunnel mode..."
+
+          # Ensure ngrok is installed
+          npm install -g @expo/ngrok
+
+          # Start Expo server in background
+          npx expo start --tunnel --no-manifest > expo_output.txt 2>&1 &
+
+          # Wait for Metro + tunnel to come online
+          sleep 45
+
+          echo "---- EXPO OUTPUT (tail) ----"
+          tail -n 100 expo_output.txt || true
+
+          # Explicitly fetch tunnel URL
+          URL=$(npx expo url --non-interactive || true)
+
+          if [ -z "$URL" ]; then
+            echo '{"url":null}' > expo_output.json
+            echo "❌ No expo URL found"
           else
-            echo "⚠️ Could not extract Expo URL. Check the logs above."
+            printf '{"url":"%s"}' "$URL" > expo_output.json
+            echo "✅ FOUND_EXPO_URL=$URL"
           fi
 
       - name: Upload Expo output artifacts
